@@ -14,7 +14,8 @@ import org.jetbrains.exposed.sql.*
 fun Application.configureRouting() {
     routing {
         get("/") {
-            call.respondText("Hello World!")
+            val sampleUser = PebbleUser(1, "John")
+            call.respond(PebbleContent("base.html", mapOf("user" to sampleUser)))
         }
     }
 }

@@ -12,12 +12,13 @@ import io.pebbletemplates.pebble.loader.ClasspathLoader
 import org.jetbrains.exposed.sql.*
 
 fun Application.configureDatabases() {
-    val database = Database.connect(
-        url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-        user = "root",
-        driver = "org.h2.Driver",
-        password = "",
-    )
+    val database =
+        Database.connect(
+            url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+            user = "root",
+            driver = "org.h2.Driver",
+            password = "",
+        )
     val userService = UserService(database)
     routing {
         // Create user
@@ -26,7 +27,7 @@ fun Application.configureDatabases() {
             val id = userService.create(user)
             call.respond(HttpStatusCode.Created, id)
         }
-        
+
         // Read user
         get("/users/{id}") {
             val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
@@ -37,7 +38,7 @@ fun Application.configureDatabases() {
                 call.respond(HttpStatusCode.NotFound)
             }
         }
-        
+
         // Update user
         put("/users/{id}") {
             val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
@@ -45,7 +46,7 @@ fun Application.configureDatabases() {
             userService.update(id, user)
             call.respond(HttpStatusCode.OK)
         }
-        
+
         // Delete user
         delete("/users/{id}") {
             val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
