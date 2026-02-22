@@ -9,8 +9,29 @@
     <title>{% block title %}Demo Application{% endblock %}</title>
 </head>
 <body>
+<header class="container-fluid">
+    <nav>
+        <ul>
+            <li><strong>Digital Library</strong></li>
+        </ul>
+        <ul>
+            <li><input
+                    type="search"
+                    name="search"
+                    placeholder="Search"
+                    aria-label="Search"
+            /></li>
+        </ul>
+        <ul>
+            <li><button class="outline contrast">Sign Up</button></li>
+            <li><button class="contrast">Login</button></li>
+        </ul>
+    </nav>
+</header>
 <main class="container">
-    {% block content %}{% endblock %}
+    {% block content %}
+    <h1>Hello {{user}}!</h1>
+    {% endblock %}
 </main>
 </body>
 </html>

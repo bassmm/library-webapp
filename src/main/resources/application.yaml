@@ -1,6 +1,7 @@
 ktor:
-    application:
+  application:
         modules:
             - com.library.ApplicationKt.module
-    deployment:
+  deployment:
         port: 8080
+  development: true
