@@ -40,7 +40,6 @@ dependencies {
     // SQLite dependency Source: https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
     implementation("org.xerial:sqlite-jdbc:$sqliteVersion")
 
-    // DataFaker Source: https://mvnrepository.com/artifact/net.datafaker/datafaker
-    implementation("net.datafaker:datafaker:2.5.4")
-
+    implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.pebble)
 }
