@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import java.awt.print.Book
 
 fun Application.configureRouting() {
     routing {
@@ -28,14 +29,24 @@ fun Application.configureRouting() {
             call.respond(PebbleContent("base.html", mapOf("user" to "Library User")))
         }
 
-        get("/book") {
-            val placeholderBook =
-                mapOf(
-                    "title" to "The Book of Strange New Things",
-                    "author" to "Michel Faber",
-                    "notes" to "This book kinda sucks",
-                )
-            call.respond(PebbleContent("book.html", mapOf("book" to placeholderBook)))
+        get("/book/{id}") {
+            val id = call.parameters["id"]?.toIntOrNull()
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
+
+            val bookFromId = transaction {
+                Books.selectAll().where(Books.bookId eq id).map {
+                    mapOf(
+                        "id" to it[Books.bookId],
+                        "title" to it[Books.title],
+                        "author" to it[Books.author],
+                        "notes" to it[Books.notes],
+                    )
+                }.singleOrNull()
+            }
+            call.respond(PebbleContent("book.html", mapOf("book" to bookFromId) as Map<String, Any>))
         }
     }
 }
