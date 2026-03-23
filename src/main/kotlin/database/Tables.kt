@@ -1,5 +1,6 @@
 package database
 
+import java.time.LocalDateTime
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.javatime.*
 
@@ -35,6 +36,8 @@ object Users: Table("users") {
 object Using: Table("using") {
     val user = integer("userId").references(Users.userId)
     val book = integer("bookId").references(Books.bookId)
-    val takeOutDate = datetime("returnDate")
+    val takeOutDate = datetime("takeOutDate").defaultExpression(CurrentDateTime)
+    val returnDate = datetime("returnDate").clientDefault { LocalDateTime.now().plusDays(7) }
+
     override val primaryKey = PrimaryKey(user, book)
 }
