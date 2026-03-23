@@ -1,11 +1,18 @@
-{% extends "base.html" %}
-
-{% block title %} {{book.title}} {% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %} {{book.title}} {% endblock %} {%
+block content %}
 <div class="grid">
     <div style="display: flex; justify-content: center">
-        <img style="border-radius: 0.5rem" src="//ik.imagekit.io/xdibblzhh/tr:w-1080,f-webp/f3f1c3b575a09e58f8e3381642f5c1840b150c90-900x1362.jpg" height="681" width="450" alt="book cover">
+        <img
+            style="border-radius: 0.5rem"
+            src="https://covers.openlibrary.org/b/isbn/{{ book.isbn }}-L.jpg?default=false"
+            height="681"
+            width="450"
+            alt="book cover"
+            onerror="
+                this.src =
+                    'https://bookscouter.com/images/main/book-cover-unavailable.svg'
+            "
+        />
     </div>
     <div>
         <section>
@@ -18,7 +25,7 @@
                 {{ book.notes }}
             </article>
         </section>
-        <input type="button" value="Borrow Book">
+        <input type="button" value="Borrow Book" />
     </div>
 </div>
 {% endblock %}

@@ -38,14 +38,10 @@ object DatabaseSeeder {
                     // Make sure we have at least Title and Author before inserting
                     if (tokens.size >= 2) {
 
-                        // Clean up the trailing ".0" on your ISBN column if it exists
-                        val rawIsbn = tokens.getOrNull(2)?.takeIf { it.isNotBlank() }
-                        val cleanIsbn = rawIsbn?.removeSuffix(".0")
-
                         Books.insert {
                             it[title] = tokens[0]
                             it[author] = tokens[1]
-                            it[isbn13] = cleanIsbn
+                            it[isbn13] = tokens.getOrNull(2)?.takeIf { it.isNotBlank() }
                             it[formatCode] = tokens.getOrNull(3)?.takeIf { s -> s.isNotBlank() }
                             it[locationCode] = tokens.getOrNull(4)?.takeIf { s -> s.isNotBlank() }
                             it[notes] = tokens.getOrNull(5)?.takeIf { s -> s.isNotBlank() }

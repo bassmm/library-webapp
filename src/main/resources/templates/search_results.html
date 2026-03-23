@@ -1,0 +1,99 @@
+{% if query is not empty %}
+<div>
+    {% if groups | length == 0 %}
+    <p>No books found matching <strong>"{{ query }}"</strong>.</p>
+    {% else %}
+    <p>
+        Found <strong>{{ groups | length }}</strong>
+        {{ groups | length == 1 ? "title" : "titles" }} for
+        <strong>"{{ query }}"</strong>
+    </p>
+    <div style="display: flex; flex-direction: column; gap: 1rem">
+        {% for group in groups %}
+        <article>
+            <header
+                style="display: flex; gap: 0.75rem; align-items: flex-start"
+            >
+                <img
+                    style="
+                        border-radius: 0.25rem;
+                        flex-shrink: 0;
+                        width: 96px;
+                        height: auto;
+                    "
+                    src="https://covers.openlibrary.org/b/isbn/{{ group.isbn }}-M.jpg?default=false"
+                    alt="book cover"
+                    onerror="
+                        this.src =
+                            'https://bookscouter.com/images/main/book-cover-unavailable.svg'
+                    "
+                />
+                <hgroup style="margin: 0">
+                    <h5 style="margin-bottom: 0.1rem">{{ group.title }}</h5>
+                    <p style="margin: 0; color: var(--pico-muted-color)">
+                        {{ group.author }}
+                    </p>
+                </hgroup>
+            </header>
+
+            {% if group.isbn is not empty %}
+            <small style="color: var(--pico-muted-color)"
+                >ISBN: {{ group.isbn }}</small
+            >
+            {% endif %}
+
+            <ul
+                style="
+                    margin-top: 0.75rem;
+                    margin-bottom: 0;
+                    padding-left: 0;
+                    list-style: none;
+                "
+            >
+                {% for copy in group.copies %}
+                <li
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 0.3rem 0;
+                        border-top: 1px solid var(--pico-muted-border-color);
+                    "
+                >
+                    <a href="/book/{{ copy.id }}">Copy #{{ copy.id }}</a>
+                    <span
+                        style="display: flex; align-items: center; gap: 0.5rem"
+                    >
+                        {% if copy.available %}
+                        <small><ins>Available</ins></small>
+                        {% else %}
+                        <small><del>Checked out</del></small>
+                        {% endif %} {% if copy.location is not empty %}
+                        <small style="color: var(--pico-muted-color)"
+                            >{{ copy.location }}</small
+                        >
+                        {% endif %}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <footer style="margin-bottom: 0; padding-top: 0.5rem">
+                <small>
+                    {% if group.availableCopies == 0 %}
+                    <del>All copies checked out</del>
+                    {% elseif group.availableCopies == group.totalCopies %}
+                    <ins
+                        >All {{ group.totalCopies }} {{ group.totalCopies == 1 ?
+                        "copy" : "copies" }} available</ins
+                    >
+                    {% else %} {{ group.availableCopies }} of {{
+                    group.totalCopies }} copies available {% endif %}
+                </small>
+            </footer>
+        </article>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}

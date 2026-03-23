@@ -17,8 +17,20 @@ application {
     mainClass = "io.ktor.server.netty.EngineMain"
 }
 
+ktor {
+    development = true
+}
+
 kotlin {
     jvmToolchain(21)
+}
+
+tasks.named<JavaExec>("run") {
+    // Keeps stdin open so the process doesn't exit immediately,
+    // and passes the development flag as a JVM system property
+    // as a belt-and-suspenders complement to the ktor {} block above.
+    standardInput = System.`in`
+    jvmArgs("-Dio.ktor.development=true")
 }
 
 dependencies {

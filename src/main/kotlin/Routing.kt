@@ -21,7 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.awt.print.Book
+
 
 fun Application.configureRouting() {
     routing {
@@ -43,48 +43,64 @@ fun Application.configureRouting() {
                         "title" to it[Books.title],
                         "author" to it[Books.author],
                         "notes" to it[Books.notes],
+                        "isbn" to it[Books.isbn13]
                     )
                 }.singleOrNull()
             }
             call.respond(PebbleContent("book.html", mapOf("book" to bookFromId) as Map<String, Any>))
         }
-    }
-}
 
-fun setupDatabase() {
-    // Connect to the database - h2 in memory
-    Database.Companion.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
+        get("/search") {
+            val query = call.request.queryParameters["search"]?.trim().orEmpty()
 
-    transaction {
-       // Create the tables
-        SchemaUtils.create(Books, Users, Using)
-
-        // database.Using CSVREAD to populate the database.Books table from the csv
-        // true is put in the 'available' column as it's missing in the CSV
-        exec("""
-            INSERT INTO books (title, author, isbn_13, format_code, location_code, notes, available) 
-            SELECT title, author, isbn_13, format_code, location_code, notes, true 
-            FROM CSVREAD('library_booklist.csv')
-        """)
-    }
-}
-
-/**
- * Searches for books matching the given author's name.
- * Uses a case-insensitive fuzzy search.
- */
-fun searchBooksByAuthor(authorName: String): List<String> {
-    return transaction {
-        Books.selectAll()
-            .where { Books.author.lowerCase() like "%${authorName.lowercase()}%" }
-            .map { row ->
-                val title = row[Books.title]
-                val author = row[Books.author]
-                val format = row[Books.formatCode] ?: "Unknown format"
-                "'$title' by $author ($format)"
+            val groups: List<Map<String, Any>> = if (query.isBlank()) {
+                emptyList()
+            } else {
+                transaction {
+                    Books.selectAll()
+                        .where {
+                            (Books.title.lowerCase() like "%${query.lowercase()}%") or
+                                    (Books.author.lowerCase() like "%${query.lowercase()}%")
+                        }
+                        .orderBy(Books.title to SortOrder.ASC)
+                        .toList()
+                }
+                    .groupBy { row ->
+                        // Books that share an ISBN are the same title — group them.
+                        // Books with no ISBN are treated as their own standalone group.
+                        row[Books.isbn13]?.takeIf { it.isNotBlank() } ?: "noIsbn_${row[Books.bookId]}"
+                    }
+                    .map { (_, groupRows) ->
+                        val first = groupRows.first()
+                        val availableCopies = groupRows.count { it[Books.available] }
+                        mapOf(
+                            "isbn" to (first[Books.isbn13] ?: ""),
+                            "title" to first[Books.title],
+                            "author" to first[Books.author],
+                            "totalCopies" to groupRows.size,
+                            "availableCopies" to availableCopies,
+                            "copies" to groupRows.map { row ->
+                                mapOf(
+                                    "id" to row[Books.bookId],
+                                    "available" to row[Books.available],
+                                    "location" to (row[Books.locationCode] ?: "Digital")
+                                )
+                            }
+                        )
+                    }
+                    .sortedBy { (it["title"] as String).lowercase() }
             }
+
+            call.respond(
+                PebbleContent(
+                    "search_results.html",
+                    mapOf("groups" to groups, "query" to query)
+                )
+            )
+        }
     }
 }
+
 
 /**
  * Searches for books matching the given title.
