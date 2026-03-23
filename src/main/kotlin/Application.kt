@@ -1,4 +1,5 @@
 package com.library
+import com.library.database.DatabaseCreation
 
 import io.ktor.server.application.*
 
@@ -11,6 +12,6 @@ fun Application.module() {
     configureSecurity()
     configureTemplating()
     configureSerialization()
-    configureDatabases()
+    DatabaseCreation.init()
     configureRouting()
 }
