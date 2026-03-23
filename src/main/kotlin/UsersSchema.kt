@@ -8,9 +8,14 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @Serializable
-data class ExposedUser(val name: String, val age: Int)
+data class ExposedUser(
+    val name: String,
+    val age: Int,
+)
 
-class UserService(database: Database) {
+class UserService(
+    database: Database,
+) {
     object Users : Table() {
         val id = integer("id").autoIncrement()
         val name = varchar("name", length = 50)
@@ -25,23 +30,27 @@ class UserService(database: Database) {
         }
     }
 
-    suspend fun create(user: ExposedUser): Int = dbQuery {
-        Users.insert {
-            it[name] = user.name
-            it[age] = user.age
-        }[Users.id]
-    }
+    suspend fun create(user: ExposedUser): Int =
+        dbQuery {
+            Users.insert {
+                it[name] = user.name
+                it[age] = user.age
+            }[Users.id]
+        }
 
-    suspend fun read(id: Int): ExposedUser? {
-        return dbQuery {
-            Users.selectAll()
+    suspend fun read(id: Int): ExposedUser? =
+        dbQuery {
+            Users
+                .selectAll()
                 .where { Users.id eq id }
                 .map { ExposedUser(it[Users.name], it[Users.age]) }
                 .singleOrNull()
         }
-    }
 
-    suspend fun update(id: Int, user: ExposedUser) {
+    suspend fun update(
+        id: Int,
+        user: ExposedUser,
+    ) {
         dbQuery {
             Users.update({ Users.id eq id }) {
                 it[name] = user.name
@@ -56,7 +65,5 @@ class UserService(database: Database) {
         }
     }
 
-    private suspend fun <T> dbQuery(block: suspend () -> T): T =
-        newSuspendedTransaction(Dispatchers.IO) { block() }
+    private suspend fun <T> dbQuery(block: suspend () -> T): T = newSuspendedTransaction(Dispatchers.IO) { block() }
 }
-

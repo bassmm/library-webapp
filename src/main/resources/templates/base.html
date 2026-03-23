@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.red.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <title>{% block title %}Demo Application{% endblock %}</title>
+</head>
+<body>
+<header class="container">
+    <nav>
+        <ul>
+            <li><strong>Digital Library</strong></li>
+        </ul>
+        <ul>
+            <li><input
+                    type="search"
+                    name="search"
+                    placeholder="Search"
+                    aria-label="Search"
+            /></li>
+        </ul>
+        <ul>
+            <li><a class="secondary">Sign Up</a></li>
+            <li><a class="contrast">Login</a></li>
+        </ul>
+    </nav>
+</header>
+<main class="container">
+    {% block content %}
+    <h2>Hello {{user}}!</h2>
+    {% endblock %}
+</main>
+<footer class="container">
+    <hr />
+    <small style="text-align: center">© Copyright COMP2850 Mini Project by Bassam, George, Aram, Sam and Ned</small>
+</footer>
+</body>
+</html>
