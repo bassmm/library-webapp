@@ -25,7 +25,13 @@ block content %}
                 {{ book.notes }}
             </article>
         </section>
-        <input type="button" value="Borrow Book" />
+        {% if loggedIn %}
+        <form method="post" action="/book/{{ book.id }}/borrow">
+            <button type="submit">Borrow Book</button>
+        </form>
+        {% else %}
+        <a href="/login_page" role="button" class="secondary">Log in to borrow</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

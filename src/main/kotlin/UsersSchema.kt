@@ -1,27 +1,29 @@
 package com.library
 
+import database.UserRoles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.*
 
 @Serializable
 data class ExposedUser(
-    val name: String,
-    val age: Int,
+    val username: String,
+    val password: String,
 )
 
 class UserService(
     database: Database,
 ) 
 {
-    object Users : Table() {
+    object Users : Table("users") {
         val id = integer("id").autoIncrement()
-        val name = varchar("name", length = 50)
-        val age = integer("age")
-
+        val username = varchar("username", length = 255).uniqueIndex()
+        val role = enumerationByName("role", 255, UserRoles::class).default(UserRoles.CUSTOMER)
+        val password = varchar("password", length = 255)
         override val primaryKey = PrimaryKey(id)
     }
 
@@ -31,26 +33,24 @@ class UserService(
         }
     }
 
-    suspend fun verifyPassword(passowrd): bool {
-        val valid = false
-        val user = dbQuery {
-            Users
-                .selectAll()
-                .where { Users.password eq password }
-        }
-        if (user != null) {
-            valid = true
-        }
-        
-        return valid
-    }
-
-    suspend fun findUserByUsername(user): ExposedUser? {
+    suspend fun verifyPassword(
+        username: String,
+        password: String,
+    ): Boolean =
         dbQuery {
             Users
                 .selectAll()
-                .where { Users.name eq name }
-                .map { ExposedUser(it[Users.name], it[Users.password]) }
+                .where { (Users.username eq username) and (Users.password eq password) }
+                .limit(1)
+                .count() == 1L
+        }
+
+    suspend fun findUserByUsername(username: String): ExposedUser? {
+        return dbQuery {
+            Users
+                .selectAll()
+                .where { Users.username eq username }
+                .map { ExposedUser(it[Users.username], it[Users.password]) }
                 .singleOrNull()
         }
     }
@@ -58,8 +58,9 @@ class UserService(
     suspend fun create(user: ExposedUser): Int =
         dbQuery {
             Users.insert {
-                it[name] = user.name
-                it[age] = user.age
+                it[username] = user.username
+                it[role] = UserRoles.CUSTOMER
+                it[password] = user.password
             }[Users.id]
         }
 
@@ -68,7 +69,7 @@ class UserService(
             Users
                 .selectAll()
                 .where { Users.id eq id }
-                .map { ExposedUser(it[Users.name], it[Users.age]) }
+                .map { ExposedUser(it[Users.username], it[Users.password]) }
                 .singleOrNull()
         }
 
@@ -78,8 +79,8 @@ class UserService(
     ) {
         dbQuery {
             Users.update({ Users.id eq id }) {
-                it[name] = user.name
-                it[age] = user.age
+                it[username] = user.username
+                it[password] = user.password
             }
         }
     }
