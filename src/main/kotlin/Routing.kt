@@ -4,26 +4,23 @@ import database.Books
 import database.Users
 import database.Using
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.pebble.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
-import io.pebbletemplates.pebble.loader.ClasspathLoader
-import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
-import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.*
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-
 
 fun Application.configureRouting() {
     routing {
@@ -48,31 +45,42 @@ fun Application.configureRouting() {
             }
 
             val bookFromId = transaction {
-                Books.selectAll().where(Books.bookId eq id).map {
-                    mapOf(
-                        "id" to it[Books.bookId],
-                        "title" to it[Books.title],
-                        "author" to it[Books.author],
-                        "notes" to it[Books.notes],
-                        "isbn" to it[Books.isbn13]
-                    )
-                }.singleOrNull()
+                Books
+                    .selectAll()
+                    .where { Books.bookId eq id }
+                    .map {
+                        mapOf(
+                            "id" to it[Books.bookId],
+                            "title" to it[Books.title],
+                            "author" to it[Books.author],
+                            "notes" to it[Books.notes],
+                            "isbn" to it[Books.isbn13]
+                        )
+                    }
+                    .singleOrNull()
             }
+
             if (bookFromId == null) {
                 call.respond(HttpStatusCode.NotFound)
                 return@get
             }
+
             val session = call.sessions.get<UserSession>()
+            val borrowStatus = call.request.queryParameters["borrow"]
+            val borrowMessage = when (borrowStatus) {
+                "success" -> "Book borrowed successfully."
+                "unavailable" -> "This book is currently unavailable."
+                "error" -> "Could not borrow this book right now."
+                else -> ""
+            }
             val model: Map<String, Any> = mapOf(
                 "book" to bookFromId,
-                "loggedIn" to (session != null)
+                "loggedIn" to (session != null),
+                "hasBorrowMessage" to borrowMessage.isNotBlank(),
+                "borrowMessage" to borrowMessage,
+                "borrowSuccess" to (borrowStatus == "success")
             )
-            call.respond(
-                PebbleContent(
-                    "book.html",
-                    model
-                )
-            )
+            call.respond(PebbleContent("book.html", model))
         }
 
         get("/search") {
@@ -85,14 +93,12 @@ fun Application.configureRouting() {
                     Books.selectAll()
                         .where {
                             (Books.title.lowerCase() like "%${query.lowercase()}%") or
-                                    (Books.author.lowerCase() like "%${query.lowercase()}%")
+                                (Books.author.lowerCase() like "%${query.lowercase()}%")
                         }
                         .orderBy(Books.title to SortOrder.ASC)
                         .toList()
                 }
                     .groupBy { row ->
-                        // Books that share an ISBN are the same title — group them.
-                        // Books with no ISBN are treated as their own standalone group.
                         row[Books.isbn13]?.takeIf { it.isNotBlank() } ?: "noIsbn_${row[Books.bookId]}"
                     }
                     .map { (_, groupRows) ->
@@ -116,33 +122,174 @@ fun Application.configureRouting() {
                     .sortedBy { (it["title"] as String).lowercase() }
             }
 
-            call.respond(
-                PebbleContent(
-                    "search_results.html",
-                    mapOf("groups" to groups, "query" to query)
-                )
-            )
+            call.respond(PebbleContent("search_results.html", mapOf("groups" to groups, "query" to query)))
         }
 
-        put("/borrow/{bookId}/{userId}") {
-            val bookId = call.parameters["bookId"]?.toIntOrNull()
-            val userId = call.parameters["userId"]?.toIntOrNull()
-
-            if (bookId == null || userId == null) {
-                call.respond(HttpStatusCode.BadRequest, "Invalid IDs")
-                return@put
-            }
-
-            val success = borrowBook(bookId, userId)
-            if (success) {
-                call.respond(HttpStatusCode.OK, "Book borrowed successfully")
-            } else {
-                call.respond(HttpStatusCode.Conflict, "Book is already checked out or does not exist")
         authenticate("auth-session") {
+            get("/my_books") {
+                val principal = call.principal<UserIdPrincipal>()
+                if (principal == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@get
+                }
+
+                val userId = transaction {
+                    Users
+                        .selectAll()
+                        .where { Users.username eq principal.name }
+                        .map { it[Users.userId] }
+                        .singleOrNull()
+                }
+
+                if (userId == null) {
+                    call.respond(HttpStatusCode.Unauthorized, "User account not found.")
+                    return@get
+                }
+
+                val borrowedBooks: List<Map<String, Any>> = transaction {
+                    (Using innerJoin Books)
+                        .selectAll()
+                        .where { Using.user eq userId }
+                        .orderBy(Using.returnDate to SortOrder.ASC)
+                        .map { row ->
+                            mapOf(
+                                "id" to row[Books.bookId],
+                                "title" to row[Books.title],
+                                "author" to row[Books.author],
+                                "due" to row[Using.returnDate].toString(),
+                                "taken" to row[Using.takeOutDate].toString()
+                            )
+                        }
+                }
+
+                call.respond(
+                    PebbleContent(
+                        "borrowed_books.html",
+                        mapOf(
+                            "user" to principal.name,
+                            "loggedIn" to true,
+                            "books" to borrowedBooks,
+                            "returnStatus" to (call.request.queryParameters["return"] ?: "")
+                        )
+                    )
+                )
+            }
+
+            post("/book/{id}/return") {
+                val bookId = call.parameters["id"]?.toIntOrNull()
+                if (bookId == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val principal = call.principal<UserIdPrincipal>()
+                if (principal == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                val userId = transaction {
+                    Users
+                        .selectAll()
+                        .where { Users.username eq principal.name }
+                        .map { it[Users.userId] }
+                        .singleOrNull()
+                }
+
+                if (userId == null) {
+                    call.respondRedirect("/my_books?return=error")
+                    return@post
+                }
+
+                val returned = returnBook(bookId, userId)
+                if (returned) {
+                    call.respondRedirect("/my_books?return=success")
+                } else {
+                    call.respondRedirect("/my_books?return=notfound")
+                }
+            }
+
             post("/book/{id}/borrow") {
-                call.respond(HttpStatusCode.NotImplemented, "Borrowing feature not implemented yet.")
+                val bookId = call.parameters["id"]?.toIntOrNull()
+                if (bookId == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val principal = call.principal<UserIdPrincipal>()
+                if (principal == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                val userId = transaction {
+                    Users
+                        .selectAll()
+                        .where { Users.username eq principal.name }
+                        .map { it[Users.userId] }
+                        .singleOrNull()
+                }
+
+                if (userId == null) {
+                    call.respond(HttpStatusCode.Unauthorized, "User account not found.")
+                    return@post
+                }
+
+                val borrowed = borrowBook(bookId, userId)
+                if (borrowed) {
+                    call.respondRedirect("/book/$bookId?borrow=success")
+                } else {
+                    call.respondRedirect("/book/$bookId?borrow=unavailable")
+                }
             }
         }
+    }
+}
+
+fun borrowBook(
+    bookId: Int,
+    userId: Int,
+): Boolean {
+    return transaction {
+        val updatedRows = Books.update({ (Books.bookId eq bookId) and (Books.available eq true) }) {
+            it[available] = false
+        }
+
+        if (updatedRows == 0) {
+            return@transaction false
+        }
+
+        try {
+            Using.insert {
+                it[user] = userId
+                it[book] = bookId
+            }
+        } catch (_: Exception) {
+            Books.update({ Books.bookId eq bookId }) {
+                it[available] = true
+            }
+            return@transaction false
+        }
+
+        true
+    }
+}
+
+fun returnBook(
+    bookId: Int,
+    userId: Int,
+): Boolean {
+    return transaction {
+        val deletedRows = Using.deleteWhere { (Using.book eq bookId) and (Using.user eq userId) }
+        if (deletedRows == 0) {
+            return@transaction false
+        }
+
+        Books.update({ Books.bookId eq bookId }) {
+            it[available] = true
+        }
+
+        true
     }
 }
 
@@ -169,7 +316,6 @@ fun searchBooksByTitle(searchTitle: String): List<String> {
  */
 fun getBorrowedBooksForUser(searchUserId: Int): List<String> {
     return transaction {
-        // Perform an INNER JOIN on database.Books and database.Using
         (Books innerJoin Using)
             .selectAll()
             .where { Using.user eq searchUserId }
@@ -181,30 +327,6 @@ fun getBorrowedBooksForUser(searchUserId: Int): List<String> {
     }
 }
 
-fun borrowBook(bookId: Int, userId: Int): Boolean {
-    return transaction {
-        // Check if book is available
-        val isAvailable = Books.selectAll().where {
-            (Books.bookId eq bookId) and (Books.available eq true)
-        }.singleOrNull() != null
 
-        if (!isAvailable) return@transaction false
 
-        // Mark book as unavailable
-        val updatedRows = Books.update({ Books.bookId eq bookId }) {
-            it[Books.available] = false
-        }
 
-        // Only create record if book was actually taken out
-        if (updatedRows > 0) {
-            // Create using record
-            Using.insert {
-                it[Using.user] = userId
-                it[Using.book] = bookId
-            }
-            return@transaction true
-        } else {
-            return@transaction false
-        }
-    }
-}

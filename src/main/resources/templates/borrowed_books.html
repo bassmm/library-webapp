@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}My Borrowed Books{% endblock %}
+{% block content %}
+<h2>Books borrowed by {{ user }}</h2>
+
+{% if returnStatus == "success" %}
+<article style="padding: 0.75rem; margin-bottom: 1rem;">
+    <small><ins>Book returned successfully.</ins></small>
+</article>
+{% elseif returnStatus == "notfound" %}
+<article style="padding: 0.75rem; margin-bottom: 1rem;">
+    <small><del>Could not return that book from your account.</del></small>
+</article>
+{% elseif returnStatus == "error" %}
+<article style="padding: 0.75rem; margin-bottom: 1rem;">
+    <small><del>An error occurred while returning the book.</del></small>
+</article>
+{% endif %}
+
+{% if books | length == 0 %}
+<p>You currently have no borrowed books.</p>
+{% else %}
+<div style="display: flex; flex-direction: column; gap: 0.75rem;">
+    {% for book in books %}
+    <article>
+        <h5 style="margin-bottom: 0.25rem;">{{ book.title }}</h5>
+        <p style="margin: 0; color: var(--pico-muted-color);">{{ book.author }}</p>
+        <small style="display: block; margin-top: 0.5rem;">Taken out: {{ book.taken }}</small>
+        <small>Due back: {{ book.due }}</small>
+        <footer style="padding-top: 0.5rem; margin-bottom: 0;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <a href="/book/{{ book.id }}" role="button" class="primary" style="margin: 0;">View book</a>
+                <form method="post" action="/book/{{ book.id }}/return" style="margin: 0;">
+                    <button type="submit" class="secondary" style="margin: 0;">Return book</button>
+                </form>
+            </div>
+        </footer>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

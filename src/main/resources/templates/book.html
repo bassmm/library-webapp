@@ -25,6 +25,15 @@ block content %}
                 {{ book.notes }}
             </article>
         </section>
+        {% if hasBorrowMessage %}
+        <article style="padding: 0.75rem; margin-top: 1rem;">
+            {% if borrowSuccess %}
+            <small><ins>{{ borrowMessage }}</ins></small>
+            {% else %}
+            <small><del>{{ borrowMessage }}</del></small>
+            {% endif %}
+        </article>
+        {% endif %}
         {% if loggedIn %}
         <form method="post" action="/book/{{ book.id }}/borrow">
             <button type="submit">Borrow Book</button>
