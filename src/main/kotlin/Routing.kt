@@ -33,7 +33,7 @@ fun Application.configureRouting() {
             call.respond(PebbleContent("login_page.html", mapOf("user" to "Library User")))
         }
 
-        // authenticate("auth-form") { 
+        // authenticate("auth-form") {
         //     post("/login") {
         //         call.respondText
         //     }
@@ -108,9 +108,25 @@ fun Application.configureRouting() {
                 )
             )
         }
+
+        put("/borrow/{bookId}/{userId}") {
+            val bookId = call.parameters["bookId"]?.toIntOrNull()
+            val userId = call.parameters["userId"]?.toIntOrNull()
+
+            if (bookId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid IDs")
+                return@put
+            }
+
+            val success = borrowBook(bookId, userId)
+            if (success) {
+                call.respond(HttpStatusCode.OK, "Book borrowed successfully")
+            } else {
+                call.respond(HttpStatusCode.Conflict, "Book is already checked out or does not exist")
+            }
+        }
     }
 }
-
 
 /**
  * Searches for books matching the given title.
@@ -144,5 +160,33 @@ fun getBorrowedBooksForUser(searchUserId: Int): List<String> {
                 val returnDate = row[Using.returnDate]
                 "Borrowed: '$title' | Due back: $returnDate"
             }
+    }
+}
+
+fun borrowBook(bookId: Int, userId: Int): Boolean {
+    return transaction {
+        // Check if book is available
+        val isAvailable = Books.selectAll().where {
+            (Books.bookId eq bookId) and (Books.available eq true)
+        }.singleOrNull() != null
+
+        if (!isAvailable) return@transaction false
+
+        // Mark book as unavailable
+        val updatedRows = Books.update({ Books.bookId eq bookId }) {
+            it[Books.available] = false
+        }
+
+        // Only create record if book was actually taken out
+        if (updatedRows > 0) {
+            // Create using record
+            Using.insert {
+                it[Using.user] = userId
+                it[Using.book] = bookId
+            }
+            return@transaction true
+        } else {
+            return@transaction false
+        }
     }
 }

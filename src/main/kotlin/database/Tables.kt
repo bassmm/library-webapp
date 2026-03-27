@@ -8,7 +8,7 @@ enum class UserRoles {
     STAFF, CUSTOMER
 }
 
-// Creating database.Books table - named "books"
+// Books table
 object Books : Table("books") {
     val bookId = integer("id").autoIncrement() // needed because isbn's aren't unique
     val title = varchar("title", 255)
@@ -17,14 +17,12 @@ object Books : Table("books") {
     val formatCode = varchar("format_code", 10).nullable()
     val locationCode = varchar("location_code", 50).nullable()
     val notes = varchar("notes", 255).nullable()
-    val available = bool("available")
-    // If we don't want a history of taken out books we could do the following instead:
-    // val borrowedBy = integer("borrowed_by").references(database.Users.userId).nullable()
+    val available = bool("available").default(true)
 
     override val primaryKey = PrimaryKey(bookId)
 }
 
-// Creating database.Users table - named "users"
+// Users Table
 object Users: Table("users") {
     val userId = integer("id").autoIncrement()
     val username = varchar("username", 255)
@@ -34,6 +32,7 @@ object Users: Table("users") {
     override val primaryKey = PrimaryKey(userId)
 }
 
+// Using table
 object Using: Table("using") {
     val user = integer("userId").references(Users.userId)
     val book = integer("bookId").references(Books.bookId)
