@@ -12,4 +12,19 @@ import io.pebbletemplates.pebble.loader.ClasspathLoader
 import org.jetbrains.exposed.v1.core.*
 
 fun Application.configureSecurity() {
+    install(Authentication) {
+        form("auth-form") {
+            val user = UserService.findUserByUsername(credentials.name)
+            validate { credentials ->
+                if (user != null && UserService.verifyPassword(credentials.password) == true) {
+                    UserIdPrincipal(user.username_)
+                } else {
+                    null
+                }
+            }
+            challenge {
+                call.respond(HttpStatusCode.Unauthorized, "Details are not correct")
+            }
+        }
+    }
 }

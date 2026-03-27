@@ -15,7 +15,8 @@ data class ExposedUser(
 
 class UserService(
     database: Database,
-) {
+) 
+{
     object Users : Table() {
         val id = integer("id").autoIncrement()
         val name = varchar("name", length = 50)
@@ -27,6 +28,30 @@ class UserService(
     init {
         transaction(database) {
             SchemaUtils.create(Users)
+        }
+    }
+
+    suspend fun verifyPassword(passowrd): bool {
+        val valid = false
+        val user = dbQuery {
+            Users
+                .selectAll()
+                .where { Users.password eq password }
+        }
+        if (user != null) {
+            valid = true
+        }
+        
+        return valid
+    }
+
+    suspend fun findUserByUsername(user): ExposedUser? {
+        dbQuery {
+            Users
+                .selectAll()
+                .where { Users.name eq name }
+                .map { ExposedUser(it[Users.name], it[Users.password]) }
+                .singleOrNull()
         }
     }
 

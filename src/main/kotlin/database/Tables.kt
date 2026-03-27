@@ -28,7 +28,8 @@ object Books : Table("books") {
 object Users: Table("users") {
     val userId = integer("id").autoIncrement()
     val username = varchar("username", 255)
-    val role = enumerationByName("role", 255, UserRoles::class)
+    val role = enumerationByName("role", 255, UserRoles::class).default(UserRoles.CUSTOMER)
+    val password = varchar("password",255)
 
     override val primaryKey = PrimaryKey(userId)
 }

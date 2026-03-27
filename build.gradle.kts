@@ -12,6 +12,7 @@ plugins {
 
 group = "com.library"
 version = "0.0.1"
+ktor_version = ""
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
@@ -41,6 +42,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("io.ktor:ktor-server-config-yaml")
+    implementation("io.ktor:ktor-server-auth:$ktor_version")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
 

@@ -29,6 +29,16 @@ fun Application.configureRouting() {
             call.respond(PebbleContent("base.html", mapOf("user" to "Library User")))
         }
 
+        get("/login_page") {
+            call.respond(PebbleContent("login_page.html", mapOf("user" to "Library User")))
+        }
+
+        // authenticate("auth-form") { 
+        //     post("/login") {
+        //         call.respondText
+        //     }
+        // }
+
         get("/book/{id}") {
             val id = call.parameters["id"]?.toIntOrNull()
             if (id == null) {
