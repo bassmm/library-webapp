@@ -21,6 +21,22 @@ object DatabaseCreation {
             transaction {
                 // CREATE TABLE IF NOT EXIST:
                 SchemaUtils.create(Books, Users, Using)
+
+                val hasPasswordColumn =
+                    exec("PRAGMA table_info(users)") { rs ->
+                        var found = false
+                        while (rs.next()) {
+                            if (rs.getString("name") == "password") {
+                                found = true
+                                break
+                            }
+                        }
+                        found
+                    } ?: false
+
+                if (!hasPasswordColumn) {
+                    exec("ALTER TABLE users ADD COLUMN password VARCHAR(255) NOT NULL DEFAULT ''")
+                }
             }
 
             println("Connected to database & Tables Created")

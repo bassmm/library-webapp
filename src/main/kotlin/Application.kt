@@ -11,10 +11,10 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    DatabaseCreation.init()
+    DatabaseSeeder.seedBooksFromCsv("src/main/resources/library_booklist.csv")
     configureSecurity()
     configureTemplating()
     configureSerialization()
-    DatabaseCreation.init()
-    DatabaseSeeder.seedBooksFromCsv("src/main/resources/library_booklist.csv")
     configureRouting()
 }

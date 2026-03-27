@@ -6,11 +6,13 @@ import database.Using
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.pebble.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
 import io.pebbletemplates.pebble.loader.ClasspathLoader
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.core.eq
@@ -26,18 +28,17 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 fun Application.configureRouting() {
     routing {
         get("/") {
-            call.respond(PebbleContent("base.html", mapOf("user" to "Library User")))
+            val session = call.sessions.get<UserSession>()
+            call.respond(
+                PebbleContent(
+                    "base.html",
+                    mapOf(
+                        "user" to (session?.username ?: "Library User"),
+                        "loggedIn" to (session != null)
+                    )
+                )
+            )
         }
-
-        get("/login_page") {
-            call.respond(PebbleContent("login_page.html", mapOf("user" to "Library User")))
-        }
-
-        // authenticate("auth-form") { 
-        //     post("/login") {
-        //         call.respondText
-        //     }
-        // }
 
         get("/book/{id}") {
             val id = call.parameters["id"]?.toIntOrNull()
@@ -57,7 +58,21 @@ fun Application.configureRouting() {
                     )
                 }.singleOrNull()
             }
-            call.respond(PebbleContent("book.html", mapOf("book" to bookFromId) as Map<String, Any>))
+            if (bookFromId == null) {
+                call.respond(HttpStatusCode.NotFound)
+                return@get
+            }
+            val session = call.sessions.get<UserSession>()
+            val model: Map<String, Any> = mapOf(
+                "book" to bookFromId,
+                "loggedIn" to (session != null)
+            )
+            call.respond(
+                PebbleContent(
+                    "book.html",
+                    model
+                )
+            )
         }
 
         get("/search") {
@@ -107,6 +122,12 @@ fun Application.configureRouting() {
                     mapOf("groups" to groups, "query" to query)
                 )
             )
+        }
+
+        authenticate("auth-session") {
+            post("/book/{id}/borrow") {
+                call.respond(HttpStatusCode.NotImplemented, "Borrowing feature not implemented yet.")
+            }
         }
     }
 }

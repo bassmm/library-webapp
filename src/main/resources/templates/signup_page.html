@@ -8,26 +8,27 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.red.min.css"
         />
-        <title>Login</title>
+        <title>Sign Up</title>
     </head>
     <body>
-        <main class="container" style="max-width: 480px; margin-top: 4rem;">
+        <main class="container" style="max-width: 520px; margin-top: 4rem;">
             <article>
                 <header>
-                    <h1 style="text-align: center; margin-bottom: 0;">Login</h1>
+                    <h1 style="text-align: center; margin-bottom: 0;">Create account</h1>
                 </header>
 
-                {% if error %}
-                <small style="color: #c62828;">Invalid username or password.</small>
+                {% if hasError %}
+                <small style="color: #c62828;">{{ error }}</small>
                 {% endif %}
 
-                <form method="post" action="/login">
+                <form method="post" action="/signup">
                     <label for="username">Username</label>
                     <input
                         id="username"
                         name="username"
                         type="text"
                         autocomplete="username"
+                        maxlength="50"
                         required
                     />
 
@@ -36,12 +37,25 @@
                         id="password"
                         name="password"
                         type="password"
-                        autocomplete="current-password"
+                        autocomplete="new-password"
+                        maxlength="100"
                         required
                     />
 
-                    <button type="submit">Sign in</button>
+                    <label for="confirm-password">Confirm password</label>
+                    <input
+                        id="confirm-password"
+                        name="confirm_password"
+                        type="password"
+                        autocomplete="new-password"
+                        maxlength="100"
+                        required
+                    />
+
+                    <button type="submit">Sign up</button>
                 </form>
+
+                <small>Already have an account? <a href="/login_page">Log in</a></small>
             </article>
         </main>
     </body>

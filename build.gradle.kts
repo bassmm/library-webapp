@@ -1,6 +1,6 @@
 val kotlinVersion = "2.3.0"
 val logbackVersion = "1.5.20"
-
+val ktor_version = "2.1.3"
 val sqliteVersion = "3.51.2.0"
 val exposedVersion = "1.1.1"
 
@@ -12,7 +12,6 @@ plugins {
 
 group = "com.library"
 version = "0.0.1"
-ktor_version = ""
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
@@ -43,6 +42,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation("io.ktor:ktor-server-auth:$ktor_version")
+    implementation("io.ktor:ktor-server-sessions:$ktor_version")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
 
